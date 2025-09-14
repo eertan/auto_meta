@@ -1,23 +1,64 @@
+# AutoMeta: Automated Metadata Generation
 
-** Description
+![Project Status: WIP](https://img.shields.io/badge/status-work--in--progress-yellow.svg)
 
-Project to auto generate metadata given a set of data source in a specific format. 
+## Introduction
 
-** Requirements
-- Input is either a set of data tables, parquet/csv file, etc. or a set of database tables.
-- Output is a metadata file with specific fields, the format will be provided.
-- The code should determine:
-  - whether there is a primary key and/or candidate column(s) for primary. This will be done 
-  checking the uniquness of the values in the data using candidate column(s). The candatates initially can be selected 
-  from columns that has "id-looking" values, column name can give a clue, datatype can only be integer or string.
-  - whether there is foreign keys in the data. This can be performed looking at all the sources in the dataset and their proposed 
-  primary keys.
-  - Type of the source as Entity, Event, State, Relationship or Participation.
-    - Entity: The file/table contains attributes that belong to an entity. The primary key should only be id
-    column that belongs to an entity. Ex: User file, Company file, etc. 
-    - Event: events are things that happen at a specific point in time so event files/sources need to have a timestamp and attributes 
-    that can be associated with an event. Ex: Transaction file. 
-    - State: states are things that have lingering effect but observed at certain times so event files need to have a timestamp and 
-    attributes that can be associated with states. Ex: Weather, macroeconomy, user marrital status, etc.
-    - Relationship: The tables/files that contain 2 sets of entity ids as foreign keys.
-    - Participation: The tables/files that contain an event id and an entity id as foreign keys.
+AutoMeta is a Python-based project designed to automatically generate metadata from a given set of data sources. It analyzes data tables from various formats (like CSV or Parquet) or database tables to infer important metadata, such as primary and foreign keys, and classifies each data source into a specific type. This automated process helps in understanding and organizing large datasets with minimal manual effort.
+
+## Features
+
+- **Automated Metadata Generation**: Automatically analyzes data sources and generates metadata.
+- **Primary Key Detection**: Identifies potential primary keys by checking for uniqueness in columns with "id-looking" values.
+- **Foreign Key Identification**: Discovers relationships between data sources by identifying foreign keys.
+- **Data Source Classification**: Categorizes each data source into one of the following types:
+    - **Entity**: Represents a business object with a primary key (e.g., User, Company).
+    - **Event**: Records an action that occurred at a specific time, requiring a timestamp (e.g., Transaction).
+    - **State**: Captures a state that is valid for a period, also requiring a timestamp (e.g., Weather, User Status).
+    - **Relationship**: Links two or more entities together.
+    - **Participation**: Connects an event to an entity.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.13 or higher
+- [uv](httpss://github.com/astral-sh/uv) for dependency management
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/auto_meta.git
+    cd auto_meta
+    ```
+2.  **Create a virtual environment and install dependencies using uv:**
+    ```bash
+    uv venv
+    uv pip sync
+    ```
+
+## Usage
+
+To run the metadata generation process, execute the `main.py` script:
+
+```bash
+uv run python main.py
+```
+
+The script will perform the following steps:
+1.  Load data from the `data/` directory.
+2.  Initialize the classification agents.
+3.  Build and run the classification graph.
+4.  Output the final classifications for each data source.
+
+## Roadmap
+
+- [ ] Add support for more data source formats (e.g., Parquet, database connections).
+- [ ] Improve the accuracy of primary and foreign key detection.
+- [ ] Enhance the classification rules for more complex scenarios.
+- [ ] Add a web interface for visualizing the generated metadata.
+
+## License
+
+This project is licensed under the terms of the LICENSE file.
