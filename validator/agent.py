@@ -112,6 +112,9 @@ class ValidatorAgent(dspy.Module):
 
         json_str = response.validation_result
         # Clean up potential markdown code fences
+        if not json_str:
+            print("Warning: json_str is None or empty. Returning default invalid state.")
+            return ValidationResult(is_valid=False, critiques=[])
         if json_str.startswith("```json"):
             json_str = json_str[7:-4].strip()
 

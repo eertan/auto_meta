@@ -184,6 +184,9 @@ def analyze_foreign_keys(
             target_df = dataframes[other_table]
 
             for pk in pks:
+                if pk not in target_df.columns:
+                    continue
+
                 target_dtype = target_df[pk].dtype
 
                 # 1. HARD CONSTRAINT: Types must be compatible

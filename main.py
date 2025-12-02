@@ -4,7 +4,7 @@ import asyncio
 from decider.agent import DeciderAgent
 from validator.agent import ValidatorAgent
 from graph.classification_graph import build_graph
-from profiler.profiling import suggest_primary_keys
+
 
 async def main():
     """Main function to classify data sources using the classification graph."""

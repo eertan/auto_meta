@@ -2,7 +2,7 @@ from typing import TypedDict, Dict
 from langgraph.graph import StateGraph, END
 from decider.agent import DeciderAgent
 from validator.agent import ValidatorAgent
-from profiler.profiling import get_data_sample, suggest_primary_keys, suggest_foreign_keys, get_schema, detect_timestamp_column
+from profiler.profiling import get_data_sample, SmartSchemaDetector, analyze_foreign_keys, detect_primary_event_timestamp
 
 class ClassificationState(TypedDict):
     """The state of the classification graph."""
@@ -26,53 +26,44 @@ async def discover_node(state: ClassificationState):
     print("\n--- Running Discovery Node ---")
     dataframes = state["dataframes"]
     
-    schemas = {name: get_schema(df) for name, df in dataframes.items()}
-    samples = {name: get_data_sample(df) for name, df in dataframes.items()}
-    initial_candidates = {name: suggest_primary_keys(df) for name, df in dataframes.items()}
+    schemas = {}
+    primary_keys = {}
+    samples = {}
     
+    for name, df in dataframes.items():
+        # Smart Profiling
+        detector = SmartSchemaDetector(df)
+        schema_report = detector.get_smart_schema()
+        
+        # Format schema for the agent
+        schemas[name] = {
+            col: f"{info['semantic_type']} ({info['storage_type']})" 
+            for col, info in schema_report.items()
+        }
+        
+        # Identify PK
+        primary_keys[name] = detector.identify_primary_key(schema_report)
+        samples[name] = get_data_sample(df)
 
-    # Step 2: Refine the candidates using cross-table validation.
-    all_primary_keys = {}
-    for table_name, candidates in initial_candidates.items():
-        # Skip if no initial candidates were found.
-        if not candidates:
-            all_primary_keys[table_name] = []
-            continue
+    # Detect Foreign Keys
+    foreign_keys = {}
+    for name, df in dataframes.items():
+        suggestions = analyze_foreign_keys(df, name, dataframes, primary_keys)
+        foreign_keys[name] = [
+            f"{s['column']} -> {s['references']} (Conf: {s['confidence']})" 
+            for s in suggestions
+        ]
 
-        # If there are multiple candidates, we need to disqualify likely foreign keys.
-        refined_pks = []
-        for pk_candidate in candidates:
-            is_likely_foreign_key = False
-            current_unique_count = dataframes[table_name][pk_candidate].n_unique()
-
-            # Check this candidate's unique count against all *other* tables.
-            for other_name, other_df in dataframes.items():
-                if table_name == other_name:
-                    continue  # Don't compare a table to itself.
-
-                if pk_candidate in other_df.columns:
-                    # If another table has more unique values for this column,
-                    # then it's the "home" table, and our candidate is a foreign key.
-                    if other_df[pk_candidate].n_unique() > current_unique_count:
-                        is_likely_foreign_key = True
-                        all_primary_keys[table_name] = [c for c in candidates if c!=pk_candidate]
-                        break  # Found disqualifying evidence, no need to check further.
-
-            # If, after checking all other tables, no disqualifying evidence was found,
-            # it's a valid primary key candidate.
-            if not is_likely_foreign_key:
-                refined_pks.append(pk_candidate)
-
-        if refined_pks:
-            all_primary_keys[table_name] = refined_pks
-            
-    foreign_keys = {name: suggest_foreign_keys(df, name, all_primary_keys, dataframes) for name, df in dataframes.items()}
-    timestamp_columns = {name: detect_timestamp_column(df, name) for name, df in dataframes.items()}
+    # Detect Timestamps
+    timestamp_columns = {
+        name: detect_primary_event_timestamp(df, name) 
+        for name, df in dataframes.items()
+    }
     
     return {
         "schemas": schemas,
         "samples": samples,
-        "primary_keys": all_primary_keys,
+        "primary_keys": primary_keys,
         "foreign_keys": foreign_keys,
         "timestamp_columns": timestamp_columns,
         "validated_classifications": {},  # Initialize as empty
